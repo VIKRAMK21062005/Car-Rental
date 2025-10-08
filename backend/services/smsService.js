@@ -1,3 +1,4 @@
+// services/smsService.js
 import twilio from 'twilio';
 
 class SMSService {
@@ -5,28 +6,60 @@ class SMSService {
     this.accountSid = process.env.TWILIO_ACCOUNT_SID;
     this.authToken = process.env.TWILIO_AUTH_TOKEN;
     this.phoneNumber = process.env.TWILIO_PHONE_NUMBER;
+    this.client = null;
+    this.isConfigured = false;
     
-    if (this.accountSid && this.authToken) {
+    this.initialize();
+  }
+
+  initialize() {
+    if (!this.accountSid || !this.authToken || !this.phoneNumber) {
+      console.warn('⚠️ Twilio credentials not found. SMS service will be disabled.');
+      console.warn('Set TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, and TWILIO_PHONE_NUMBER in .env');
+      return;
+    }
+
+    try {
       this.client = twilio(this.accountSid, this.authToken);
-    } else {
-      console.warn('Twilio credentials not found. SMS service will not work.');
+      this.isConfigured = true;
+      console.log('✅ SMS service initialized');
+    } catch (error) {
+      console.error('❌ SMS service initialization failed:', error.message);
+      this.isConfigured = false;
     }
   }
 
   async sendSMS(to, message) {
-    if (!this.client) {
+    if (!this.isConfigured || !this.client) {
+      console.warn(`⚠️ SMS not sent to ${to}: Service not configured`);
       return {
         success: false,
-        error: 'Twilio client not initialized'
+        error: 'SMS service not configured'
       };
     }
 
     try {
+      // Validate phone number
+      const formattedPhone = this.formatPhoneNumber(to);
+      if (!formattedPhone) {
+        return {
+          success: false,
+          error: 'Invalid phone number format'
+        };
+      }
+
+      // Truncate message if too long (160 chars for single SMS)
+      const truncatedMessage = message.length > 160 
+        ? message.substring(0, 157) + '...' 
+        : message;
+
       const result = await this.client.messages.create({
-        body: message,
+        body: truncatedMessage,
         from: this.phoneNumber,
-        to
+        to: formattedPhone
       });
+
+      console.log(`✅ SMS sent to ${formattedPhone}: ${result.sid}`);
 
       return {
         success: true,
@@ -35,7 +68,7 @@ class SMSService {
         status: result.status
       };
     } catch (error) {
-      console.error('SMS sending error:', error);
+      console.error('❌ SMS sending error:', error.message);
       return {
         success: false,
         error: error.message
@@ -44,27 +77,73 @@ class SMSService {
   }
 
   formatPhoneNumber(phone) {
+    if (!phone) return null;
+
+    // Remove all non-digit characters
     let cleaned = phone.replace(/\D/g, '');
-    if (!cleaned.startsWith('1') && cleaned.length === 10) {
-      cleaned = '1' + cleaned;
+
+    // Handle Indian phone numbers
+    if (cleaned.length === 10) {
+      // Assume Indian number, add country code
+      cleaned = '91' + cleaned;
+    } else if (cleaned.startsWith('0') && cleaned.length === 11) {
+      // Remove leading 0 and add 91
+      cleaned = '91' + cleaned.substring(1);
     }
-    return '+' + cleaned;
+
+    // Add + prefix if not present
+    if (!cleaned.startsWith('+')) {
+      cleaned = '+' + cleaned;
+    } else if (cleaned.startsWith('+')) {
+      // Already has +
+      return cleaned;
+    }
+
+    // Validate length (Indian numbers should be +91 followed by 10 digits)
+    if (cleaned.length < 12 || cleaned.length > 15) {
+      console.warn(`⚠️ Invalid phone number length: ${cleaned}`);
+      return null;
+    }
+
+    return cleaned;
   }
 
   generateMessage(type, data) {
     const messages = {
-      booking_confirmation: `Hi ${data.userName}! Your booking #${data.bookingId} for ${data.vehicleName} is confirmed. Pickup: ${data.pickupDate}. View details: ${data.actionUrl}`,
-      payment_success: `Payment successful! ₹${data.amount} received for booking #${data.bookingId}. Transaction ID: ${data.transactionId}`,
-      payment_failure: `Payment failed for booking #${data.bookingId}. Please retry: ${data.actionUrl}`,
-      booking_reminder: `Reminder: Your ${data.vehicleName} pickup is scheduled for ${data.pickupDate} at ${data.pickupLocation}. See you soon!`,
+      otp: `Your OTP for Car Rental is ${data.otp}. Valid for 10 minutes. Do not share.`,
+      
+      booking_confirmation: `Hi ${data.userName}! Booking #${data.bookingId} confirmed for ${data.vehicleName}. Pickup: ${data.pickupDate}`,
+      
+      payment_success: `Payment successful! ₹${data.amount} received for booking #${data.bookingId}. Transaction: ${data.transactionId}`,
+      
+      payment_failure: `Payment failed for booking #${data.bookingId}. Please retry or contact support.`,
+      
+      booking_reminder: `Reminder: ${data.vehicleName} pickup on ${data.pickupDate} at ${data.pickupLocation}. See you soon!`,
+      
       vehicle_ready: `Good news! Your ${data.vehicleName} is ready for pickup at ${data.location}. Booking #${data.bookingId}`,
-      password_reset: `Password reset requested for your Car Rental account. Use this link: ${data.resetUrl} (valid for 1 hour)`,
-      welcome: `Welcome to Car Rental System, ${data.userName}! Start browsing our vehicles: ${data.actionUrl}`,
-      promotional: `${data.message} ${data.actionUrl || ''}`,
-      system_message: data.message
+      
+      password_reset: `Password reset requested for your Car Rental account. Use link sent to your email (valid 1 hour).`,
+      
+      welcome: `Welcome to Car Rental, ${data.userName}! Start browsing vehicles and book your ride today.`,
+      
+      promotional: `${data.message}`,
+      
+      system_message: data.message,
+
+      booking_cancelled: `Your booking #${data.bookingId} has been cancelled. Refund will be processed in 5-7 business days.`,
+
+      refund_processed: `Refund of ₹${data.amount} processed for booking #${data.bookingId}. Will reflect in 3-5 days.`
     };
 
-    return messages[type] || data.message;
+    return messages[type] || data.message || 'Message from Car Rental System';
+  }
+
+  async sendOTP(user, otpCode) {
+    const message = this.generateMessage('otp', {
+      userName: user.name,
+      otp: otpCode
+    });
+    return await this.sendSMS(user.phone, message);
   }
 
   async sendBookingConfirmation(user, bookingData) {
@@ -72,10 +151,9 @@ class SMSService {
       userName: user.name,
       bookingId: bookingData.bookingId,
       vehicleName: bookingData.vehicleName,
-      pickupDate: new Date(bookingData.pickupDate).toLocaleDateString(),
-      actionUrl: `${process.env.FRONTEND_URL}/bookings/${bookingData.bookingId}`
+      pickupDate: new Date(bookingData.pickupDate).toLocaleDateString('en-IN')
     });
-    return await this.sendSMS(this.formatPhoneNumber(user.phone), message);
+    return await this.sendSMS(user.phone, message);
   }
 
   async sendPaymentSuccess(user, paymentData) {
@@ -85,25 +163,24 @@ class SMSService {
       transactionId: paymentData.transactionId,
       bookingId: paymentData.bookingId
     });
-    return await this.sendSMS(this.formatPhoneNumber(user.phone), message);
+    return await this.sendSMS(user.phone, message);
   }
 
   async sendPaymentFailure(user, paymentData) {
     const message = this.generateMessage('payment_failure', {
-      bookingId: paymentData.bookingId,
-      actionUrl: `${process.env.FRONTEND_URL}/bookings/${paymentData.bookingId}/retry`
+      bookingId: paymentData.bookingId
     });
-    return await this.sendSMS(this.formatPhoneNumber(user.phone), message);
+    return await this.sendSMS(user.phone, message);
   }
 
   async sendBookingReminder(user, bookingData) {
     const message = this.generateMessage('booking_reminder', {
       userName: user.name,
       vehicleName: bookingData.vehicleName,
-      pickupDate: new Date(bookingData.pickupDate).toLocaleString(),
+      pickupDate: new Date(bookingData.pickupDate).toLocaleString('en-IN'),
       pickupLocation: bookingData.pickupLocation
     });
-    return await this.sendSMS(this.formatPhoneNumber(user.phone), message);
+    return await this.sendSMS(user.phone, message);
   }
 
   async sendVehicleReady(user, bookingData) {
@@ -112,40 +189,40 @@ class SMSService {
       location: bookingData.pickupLocation,
       bookingId: bookingData.bookingId
     });
-    return await this.sendSMS(this.formatPhoneNumber(user.phone), message);
+    return await this.sendSMS(user.phone, message);
   }
 
   async sendWelcome(user) {
     const message = this.generateMessage('welcome', {
-      userName: user.name,
-      actionUrl: process.env.FRONTEND_URL
+      userName: user.name
     });
-    return await this.sendSMS(this.formatPhoneNumber(user.phone), message);
+    return await this.sendSMS(user.phone, message);
   }
 
-  async sendPasswordReset(user, resetToken) {
+  async sendPasswordReset(user) {
     const message = this.generateMessage('password_reset', {
-      resetUrl: `${process.env.FRONTEND_URL}/reset-password/${resetToken}`
+      userName: user.name
     });
-    return await this.sendSMS(this.formatPhoneNumber(user.phone), message);
+    return await this.sendSMS(user.phone, message);
   }
 
   async sendCustomMessage(user, customMessage) {
-    return await this.sendSMS(this.formatPhoneNumber(user.phone), customMessage);
+    return await this.sendSMS(user.phone, customMessage);
   }
 
   async verifyConnection() {
-    if (!this.client) {
-      console.error('Twilio client not initialized');
+    if (!this.isConfigured || !this.client) {
+      console.error('❌ SMS service not configured');
       return false;
     }
 
     try {
       const account = await this.client.api.accounts(this.accountSid).fetch();
-      console.log('SMS service is ready. Account status:', account.status);
+      console.log(`✅ SMS service is ready. Account status: ${account.status}`);
       return true;
     } catch (error) {
-      console.error('SMS service connection failed:', error);
+      console.error('❌ SMS service connection failed:', error.message);
+      console.error('Please check your Twilio credentials in .env file');
       return false;
     }
   }

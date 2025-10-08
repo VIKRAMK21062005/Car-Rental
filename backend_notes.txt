@@ -1,0 +1,70 @@
+# Backend API Notes
+
+This document provides a summary of the available API endpoints based on the backend route definitions. The base path for these routes is likely `/api`.
+
+---
+
+### Admin Routes (mounted on `/admin`)
+- `GET /users`: (Admin only) Get all users.
+- `GET /users/:id`: (Admin only) Get a user by their ID.
+- `PUT /users/:id`: (Admin only) Update a user's information.
+- `DELETE /users/:id`: (Admin only) Delete a user.
+
+---
+
+### Authentication Routes (mounted on `/auth`)
+- `POST /register`: Register a new user.
+- `POST /login`: Log in an existing user.
+
+---
+
+### Booking Routes (mounted on `/bookings`)
+- `POST /create-payment-intent`: (User) Creates a Stripe payment intent.
+- `POST /book`: (User) Creates a new booking after successful payment.
+- `GET /user/:userId`: (User) Get all bookings for a specific user.
+- `GET /all`: (Admin only) Get all bookings in the system.
+
+---
+
+### Car Routes (mounted on `/cars`)
+- `GET /`: (Public) Get a list of all available cars.
+- `GET /:id`: (Public) Get a single car by its ID.
+- `POST /`: (Admin only) Create a new car listing.
+- `PUT /:id`: (Admin only) Update a car's information.
+- `DELETE /:id`: (Admin only) Delete a car listing.
+
+---
+
+### Chatbot Routes (mounted on `/chatbot`)
+- **Note:** The file `chatbotRoutes.js` appears to contain routes for the coupon controller, not a chatbot. This might be a misnaming or a bug in the routing setup. The endpoints listed are:
+- `GET /active`: Get active coupons.
+- `POST /validate`: Validate a coupon.
+- `POST /`: Create a coupon.
+- `GET /`: Get all coupons.
+- `GET /stats`: Get coupon statistics.
+- `GET /:id`: Get a coupon by ID.
+- `PUT /:id`: Update a coupon.
+- `DELETE /:id`: Delete a coupon.
+- `POST /apply`: Apply a coupon.
+
+---
+
+### Coupon Routes (mounted on `/coupons`)
+- `POST /validate`: (User) Validate a coupon code.
+- `GET /active`: (Public) Get all active, non-expired coupons.
+- `POST /apply`: (User) Apply a coupon to a transaction.
+- `GET /`: (Admin only) Get all coupons.
+- `POST /`: (Admin only) Create a new coupon.
+- `GET /stats`: (Admin only) Get coupon usage statistics.
+- `GET /:id`: (Admin only) Get a specific coupon by its ID.
+- `PUT /:id`: (Admin only) Update a coupon.
+- `DELETE /:id`: (Admin only) Delete a coupon.
+
+---
+
+### Notification Routes (mounted on `/notifications`)
+- `POST /send-otp`: Send a One-Time Password (potentially for verification).
+- `GET /user/:userId`: (User) Get all notifications for a specific user.
+- `PUT /:id/read`: (User) Mark a notification as read.
+- `DELETE /:id`: (User) Delete a notification.
+- `POST /send`: (Admin only) Send a notification to a user or users.

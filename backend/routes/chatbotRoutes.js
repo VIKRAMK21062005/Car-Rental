@@ -1,31 +1,18 @@
+// routes/chatbotRoutes.js
 import express from 'express';
 import {
-  createCoupon,
-  getAllCoupons,
-  getActiveCoupons,
-  getCouponById,
-  validateCoupon,
-  updateCoupon,
-  deleteCoupon,
-  applyCoupon,
-  getCouponStats
-} from '../controllers/couponController.js';
+  sendMessage,
+  getConversation,
+  clearConversation,
+  getSuggestions
+} from '../controllers/chatbotController.js';
 
 const router = express.Router();
 
-// Public routes
-router.get('/active', getActiveCoupons);
-router.post('/validate', validateCoupon);
-
-// Admin routes (add authentication middleware as needed)
-router.post('/', createCoupon);
-router.get('/', getAllCoupons);
-router.get('/stats', getCouponStats);
-router.get('/:id', getCouponById);
-router.put('/:id', updateCoupon);
-router.delete('/:id', deleteCoupon);
-
-// Apply coupon (requires authentication)
-router.post('/apply', applyCoupon);
+// Chatbot routes
+router.post('/send', sendMessage);
+router.get('/conversation/:conversationId', getConversation);
+router.delete('/conversation/:conversationId', clearConversation);
+router.get('/suggestions', getSuggestions);
 
 export default router;
