@@ -7,11 +7,11 @@ import generateToken from '../utils/generateToken.js';
 // Register user/admin
 // -------------------------------
 export const registerUser = asyncHandler(async (req, res) => {
-  const { name, email, password, role } = req.body;
+  const { name, email, password, role, phone } = req.body; // ✅ include phone
 
-  if (!name || !email || !password) {
+  if (!name || !email || !password || !phone) { // ✅ validate phone too
     res.status(400);
-    throw new Error('Please provide name, email, and password');
+    throw new Error('Please provide name, email, password, and phone');
   }
 
   const exists = await User.findOne({ email });
@@ -28,12 +28,14 @@ export const registerUser = asyncHandler(async (req, res) => {
     email,
     password,
     role: userRole,
+    phone, // ✅ include phone here
   });
 
   res.status(201).json({
     _id: user._id,
     name: user.name,
     email: user.email,
+    phone: user.phone, // ✅ optional but good to include
     role: user.role,
     token: generateToken(user),
   });

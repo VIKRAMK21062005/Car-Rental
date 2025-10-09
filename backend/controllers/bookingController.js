@@ -7,7 +7,7 @@ import stripe from '../config/stripe.js';
 export const createPaymentIntent = async (req, res) => {
   try {
     const { amount } = req.body;
-
+    
     if (!amount || amount <= 0) {
       return res.status(400).json({ message: 'Invalid amount' });
     }

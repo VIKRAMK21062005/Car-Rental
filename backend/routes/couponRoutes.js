@@ -18,8 +18,12 @@ const router = express.Router();
 router.post('/validate', protect, validateCoupon);  // Validate coupon for a user
 router.get('/active', getActiveCoupons);            // Get active coupons (public)
 
+// Admin-only statistics
+router.get('/stats', getCouponStats);
+
 // Apply coupon (authenticated users)
 router.post('/apply', protect, applyCoupon);
+
 
 // Admin-only routes
 router.use(protect, authorize('admin'));  // All routes below are admin-protected
@@ -33,7 +37,6 @@ router.route('/:id')
   .put(updateCoupon)   // Update coupon
   .delete(deleteCoupon); // Delete coupon
 
-// Admin-only statistics
-router.get('/stats', getCouponStats);
+
 
 export default router;
