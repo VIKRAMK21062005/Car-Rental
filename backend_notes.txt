@@ -60,7 +60,7 @@ This document provides a summary of the available API endpoints based on the bac
 - `PUT /:id`: (Admin only) Update a coupon.
 - `DELETE /:id`: (Admin only) Delete a coupon.
 
----
+----
 
 ### Notification Routes (mounted on `/notifications`)
 - `POST /send-otp`: Send a One-Time Password (potentially for verification).
