@@ -147,4 +147,4 @@ couponSchema.pre('save', function(next) {
 couponSchema.set('toJSON', { virtuals: true });
 couponSchema.set('toObject', { virtuals: true });
 
-export default mongoose.model('Coupon', couponSchema);
+export default mongoose.model('Coupon', couponSchema);  

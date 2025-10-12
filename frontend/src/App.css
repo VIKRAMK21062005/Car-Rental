@@ -1,4 +1,0 @@
-/* Import the compiled Tailwind CSS if not using PostCSS processing */
-@import './tailwind.output.css';
-
-/* Or, if you want to use plain CSS, remove the @tailwind directives and use the compiled CSS */

@@ -12,7 +12,15 @@ export const AuthProvider = ({ children }) => {
     const userData = localStorage.getItem('user');
     
     if (token && userData) {
-      setUser(JSON.parse(userData));
+      try {
+        const parsedUser = JSON.parse(userData);
+        setUser(parsedUser);
+      } catch (error) {
+        console.error('Error parsing user data:', error);
+        // Clear invalid data
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+      }
     }
     setLoading(false);
   }, []);
@@ -34,10 +42,15 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = async () => {
-    await logoutService();
-    setUser(null);
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
+    try {
+      await logoutService();
+    } catch (error) {
+      console.error('Logout error:', error);
+    } finally {
+      setUser(null);
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+    }
   };
 
   const updateUser = (userData) => {
