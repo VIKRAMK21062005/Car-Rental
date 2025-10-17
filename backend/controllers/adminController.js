@@ -1,7 +1,9 @@
-// controllers/adminController.js
+// backend/controllers/adminController.js - COMPLETE VERSION
 import asyncHandler from 'express-async-handler';
 import jwt from 'jsonwebtoken';
-import User from '../models/User.js'; // Make sure User model exists
+import User from '../models/User.js';
+import Car from '../models/Car.js';
+import Booking from '../models/Booking.js';
 
 // @desc    Admin login
 // @route   POST /api/admin/login
@@ -9,11 +11,9 @@ import User from '../models/User.js'; // Make sure User model exists
 export const adminLogin = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
 
-  // Find user by email
   const user = await User.findOne({ email });
 
   if (user && user.role === 'admin' && (await user.matchPassword(password))) {
-    // Generate JWT token
     const token = jwt.sign(
       { id: user._id, role: user.role },
       process.env.JWT_SECRET,
@@ -33,11 +33,43 @@ export const adminLogin = asyncHandler(async (req, res) => {
   }
 });
 
+// @desc    Get dashboard statistics
+// @route   GET /api/admin/stats
+// @access  Private/Admin
+export const getDashboardStats = asyncHandler(async (req, res) => {
+  const totalCars = await Car.countDocuments();
+  const totalBookings = await Booking.countDocuments();
+  const totalUsers = await User.countDocuments({ role: 'user' });
+  
+  // Calculate total revenue from confirmed bookings
+  const revenueResult = await Booking.aggregate([
+    { $match: { status: 'confirmed' } },
+    { $group: { _id: null, total: { $sum: '$totalAmount' } } }
+  ]);
+  const totalRevenue = revenueResult[0]?.total || 0;
+
+  // Get recent bookings (last 10)
+  const recentBookings = await Booking.find()
+    .populate('user', 'name email')
+    .populate('car', 'name brand model')
+    .sort({ createdAt: -1 })
+    .limit(10);
+
+  res.json({
+    success: true,
+    totalCars,
+    totalBookings,
+    totalUsers,
+    totalRevenue,
+    recentBookings,
+  });
+});
+
 // @desc    Get all users (admin only)
 // @route   GET /api/admin/users
 // @access  Private/Admin
 export const getAllUsers = asyncHandler(async (req, res) => {
-  const users = await User.find({ role: { $ne: 'admin' } }); // Exclude admins
+  const users = await User.find({ role: { $ne: 'admin' } });
   res.json(users);
 });
 
@@ -64,8 +96,9 @@ export const updateUser = asyncHandler(async (req, res) => {
     user.name = req.body.name || user.name;
     user.email = req.body.email || user.email;
     user.role = req.body.role || user.role;
-    user.phone = req.body.phone || user.phone;  // ✅ add this
-    user.isActive = req.body.isActive ?? user.isActive; // optional
+    user.phone = req.body.phone || user.phone;
+    user.isActive = req.body.isActive ?? user.isActive;
+    
     const updatedUser = await user.save();
     res.json(updatedUser);
   } else {
@@ -81,11 +114,10 @@ export const deleteUser = asyncHandler(async (req, res) => {
   const user = await User.findById(req.params.id);
 
   if (user) {
-    await user.deleteOne();  // ✅ updated method
+    await user.deleteOne();
     res.json({ message: 'User removed' });
   } else {
     res.status(404);
     throw new Error('User not found');
   }
 });
-

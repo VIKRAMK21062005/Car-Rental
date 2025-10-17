@@ -1,4 +1,4 @@
-// backend/controllers/authController.js - ENHANCED VERSION
+// backend/controllers/authController.js - COMPLETE VERSION
 import asyncHandler from 'express-async-handler';
 import User from '../models/User.js';
 import generateToken from '../utils/generateToken.js';
@@ -40,11 +40,14 @@ export const registerUser = asyncHandler(async (req, res) => {
   });
 
   res.status(201).json({
-    _id: user._id,
-    name: user.name,
-    email: user.email,
-    phone: user.phone,
-    role: user.role,
+    success: true,
+    user: {
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      phone: user.phone,
+      role: user.role,
+    },
     token: generateToken(user),
   });
 });
@@ -59,11 +62,14 @@ export const loginUser = asyncHandler(async (req, res) => {
 
   if (user && (await user.matchPassword(password))) {
     res.json({
-      _id: user._id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-      phone: user.phone,
+      success: true,
+      user: {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        phone: user.phone,
+      },
       token: generateToken(user),
     });
   } else {
@@ -73,10 +79,108 @@ export const loginUser = asyncHandler(async (req, res) => {
 });
 
 // -------------------------------
+// Get User Profile
+// -------------------------------
+export const getProfile = asyncHandler(async (req, res) => {
+  const user = await User.findById(req.user._id).select('-password');
+  
+  if (user) {
+    res.json({
+      success: true,
+      user: {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+        role: user.role,
+        createdAt: user.createdAt,
+      },
+    });
+  } else {
+    res.status(404);
+    throw new Error('User not found');
+  }
+});
+
+// -------------------------------
+// Update User Profile
+// -------------------------------
+export const updateProfile = asyncHandler(async (req, res) => {
+  const user = await User.findById(req.user._id);
+
+  if (user) {
+    user.name = req.body.name || user.name;
+    user.phone = req.body.phone || user.phone;
+    
+    // Only allow email update if it's not taken
+    if (req.body.email && req.body.email !== user.email) {
+      const emailExists = await User.findOne({ email: req.body.email });
+      if (emailExists) {
+        res.status(400);
+        throw new Error('Email already taken');
+      }
+      user.email = req.body.email;
+    }
+
+    const updatedUser = await user.save();
+
+    res.json({
+      success: true,
+      user: {
+        _id: updatedUser._id,
+        name: updatedUser.name,
+        email: updatedUser.email,
+        phone: updatedUser.phone,
+        role: updatedUser.role,
+      },
+    });
+  } else {
+    res.status(404);
+    throw new Error('User not found');
+  }
+});
+
+// -------------------------------
+// Change Password
+// -------------------------------
+export const changePassword = asyncHandler(async (req, res) => {
+  const { currentPassword, newPassword } = req.body;
+
+  if (!currentPassword || !newPassword) {
+    res.status(400);
+    throw new Error('Please provide current and new password');
+  }
+
+  const user = await User.findById(req.user._id);
+
+  if (user && (await user.matchPassword(currentPassword))) {
+    user.password = newPassword;
+    await user.save();
+
+    res.json({
+      success: true,
+      message: 'Password updated successfully',
+    });
+  } else {
+    res.status(401);
+    throw new Error('Current password is incorrect');
+  }
+});
+
+// -------------------------------
+// Logout User
+// -------------------------------
+export const logoutUser = asyncHandler(async (req, res) => {
+  res.json({
+    success: true,
+    message: 'Logged out successfully',
+  });
+});
+
+// -------------------------------
 // Create First Admin (One-time setup)
 // -------------------------------
 export const createFirstAdmin = asyncHandler(async (req, res) => {
-  // Check if any admin exists
   const adminExists = await User.findOne({ role: 'admin' });
   
   if (adminExists) {
