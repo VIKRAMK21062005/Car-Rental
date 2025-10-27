@@ -7,7 +7,9 @@ import {
   createPaymentIntent,
   cancelBooking,
   generateInvoice,
-  updateBookingStatus
+  updateBookingStatus,
+  addRating,
+  getCarRatings
 } from '../controllers/bookingController.js';
 import { protect, authorize } from '../middleware/authMiddleware.js';
 
@@ -21,6 +23,10 @@ router.post('/book', protect, createBooking);
 router.get('/user/:userId', protect, getUserBookings);
 router.put('/:id/cancel', protect, cancelBooking);
 router.get('/:id/invoice', protect, generateInvoice);
+
+// Ratings
+router.post('/rating', protect, addRating);
+router.get('/ratings/:carId', getCarRatings);
 
 // Admin routes
 router.get('/all', protect, authorize('admin'), getAllBookings);

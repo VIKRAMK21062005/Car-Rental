@@ -1,4 +1,4 @@
-// backend/models/Car.js - COMPLETE VERSION
+// backend/models/Car.js - ENHANCED VERSION
 import mongoose from 'mongoose';
 
 const carSchema = new mongoose.Schema({
@@ -72,6 +72,17 @@ const carSchema = new mongoose.Schema({
       to: { type: String }
     }],
     default: []
+  },
+  // ✅ NEW: Rating fields
+  averageRating: {
+    type: Number,
+    default: 0,
+    min: 0,
+    max: 5
+  },
+  totalRatings: {
+    type: Number,
+    default: 0
   }
 }, {
   timestamps: true
@@ -82,6 +93,7 @@ carSchema.index({ name: 'text', brand: 'text', model: 'text' });
 carSchema.index({ available: 1 });
 carSchema.index({ type: 1 });
 carSchema.index({ pricePerDay: 1 });
+carSchema.index({ averageRating: -1 });
 
 const Car = mongoose.model('Car', carSchema);
 

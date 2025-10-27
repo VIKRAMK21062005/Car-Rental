@@ -1,33 +1,66 @@
 // backend/controllers/bookingController.js - ENHANCED VERSION
 import Booking from '../models/Booking.js';
 import Car from '../models/Car.js';
+import Rating from '../models/Rating.js';
 import stripe from '../config/stripe.js';
 import PDFDocument from 'pdfkit';
-import fs from 'fs';
-import path from 'path';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 // 🧾 Create Stripe Payment Intent
 export const createPaymentIntent = async (req, res) => {
   try {
-    const { amount } = req.body;
+    const { amount, carId, startDate, endDate } = req.body;
     
     if (!amount || amount <= 0) {
       return res.status(400).json({ message: 'Invalid amount' });
+    }
+
+    // Verify car availability
+    const car = await Car.findById(carId);
+    if (!car) {
+      return res.status(404).json({ message: 'Car not found' });
+    }
+
+    // Check for overlapping bookings
+    const overlapping = await Booking.findOne({
+      car: carId,
+      status: { $in: ['pending', 'confirmed'] },
+      $or: [
+        { 'bookedTimeSlots.from': { $lt: endDate, $gte: startDate } },
+        { 'bookedTimeSlots.to': { $lte: endDate, $gt: startDate } },
+        { 
+          'bookedTimeSlots.from': { $lte: startDate },
+          'bookedTimeSlots.to': { $gte: endDate }
+        }
+      ]
+    });
+
+    if (overlapping) {
+      return res.status(400).json({ 
+        message: 'Car is already booked for the selected time period' 
+      });
     }
 
     const paymentIntent = await stripe.paymentIntents.create({
       amount: Math.round(amount * 100),
       currency: 'inr',
       automatic_payment_methods: { enabled: true },
+      metadata: {
+        carId,
+        userId: req.user._id.toString(),
+        startDate,
+        endDate
+      }
     });
 
-    res.status(200).json({ clientSecret: paymentIntent.client_secret });
+    res.status(200).json({ 
+      clientSecret: paymentIntent.client_secret,
+      paymentIntentId: paymentIntent.id
+    });
   } catch (error) {
-    console.error(error);
+    console.error('Payment Intent Error:', error);
     res.status(500).json({
       message: error.message,
       stack: process.env.NODE_ENV === 'development' ? error.stack : null,
@@ -35,27 +68,43 @@ export const createPaymentIntent = async (req, res) => {
   }
 };
 
-// 🚗 Create New Booking
+// 🚗 Create New Booking (After Payment Success)
 export const createBooking = async (req, res) => {
   try {
     const { car, bookedTimeSlots, totalHours, totalAmount, transactionId } = req.body;
     const user = req.user._id;
+
+    // Validate required fields
+    if (!car || !bookedTimeSlots || !totalHours || !totalAmount) {
+      return res.status(400).json({ 
+        message: 'Missing required fields',
+        required: ['car', 'bookedTimeSlots', 'totalHours', 'totalAmount']
+      });
+    }
 
     const bookedCar = await Car.findById(car);
     if (!bookedCar) {
       return res.status(404).json({ message: 'Car not found' });
     }
 
+    // Final check for overlapping bookings
     const overlappingBooking = await Booking.findOne({
       car,
+      status: { $in: ['pending', 'confirmed'] },
       $or: [
         { 'bookedTimeSlots.from': { $lt: bookedTimeSlots.to, $gte: bookedTimeSlots.from } },
         { 'bookedTimeSlots.to': { $lte: bookedTimeSlots.to, $gt: bookedTimeSlots.from } },
+        { 
+          'bookedTimeSlots.from': { $lte: bookedTimeSlots.from },
+          'bookedTimeSlots.to': { $gte: bookedTimeSlots.to }
+        }
       ],
     });
 
     if (overlappingBooking) {
-      return res.status(400).json({ message: 'Car is already booked for the selected time slot' });
+      return res.status(400).json({ 
+        message: 'Car is already booked for the selected time slot. Please refresh and try again.' 
+      });
     }
 
     const newBooking = new Booking({
@@ -64,16 +113,21 @@ export const createBooking = async (req, res) => {
       bookedTimeSlots,
       totalHours,
       totalAmount,
-      transactionId,
-      status: 'confirmed',
-      paymentStatus: 'paid',
+      transactionId: transactionId || 'PENDING',
+      status: transactionId ? 'confirmed' : 'pending',
+      paymentStatus: transactionId ? 'paid' : 'unpaid',
     });
 
     await newBooking.save();
 
+    // Update car's booked slots
     bookedCar.bookedTimeSlots = bookedCar.bookedTimeSlots || [];
     bookedCar.bookedTimeSlots.push(bookedTimeSlots);
     await bookedCar.save();
+
+    // Populate booking details
+    await newBooking.populate('car');
+    await newBooking.populate('user', 'name email phone');
 
     res.status(201).json({
       success: true,
@@ -81,7 +135,7 @@ export const createBooking = async (req, res) => {
       booking: newBooking,
     });
   } catch (error) {
-    console.error(error);
+    console.error('Booking Creation Error:', error);
     res.status(500).json({
       success: false,
       message: error.message,
@@ -100,7 +154,7 @@ export const getUserBookings = async (req, res) => {
 
     res.status(200).json(bookings);
   } catch (error) {
-    console.error(error);
+    console.error('Get User Bookings Error:', error);
     res.status(500).json({
       message: error.message,
       stack: process.env.NODE_ENV === 'development' ? error.stack : null,
@@ -113,12 +167,12 @@ export const getAllBookings = async (req, res) => {
   try {
     const bookings = await Booking.find()
       .populate('car')
-      .populate('user')
+      .populate('user', 'name email phone')
       .sort({ createdAt: -1 });
 
     res.status(200).json(bookings);
   } catch (error) {
-    console.error(error);
+    console.error('Get All Bookings Error:', error);
     res.status(500).json({
       message: error.message,
       stack: process.env.NODE_ENV === 'development' ? error.stack : null,
@@ -138,7 +192,6 @@ export const cancelBooking = async (req, res) => {
       return res.status(404).json({ message: 'Booking not found' });
     }
 
-    // Check if user owns this booking or is admin
     if (booking.user.toString() !== userId.toString() && req.user.role !== 'admin') {
       return res.status(403).json({ message: 'Not authorized to cancel this booking' });
     }
@@ -154,7 +207,13 @@ export const cancelBooking = async (req, res) => {
     const car = await Car.findById(booking.car);
     if (car) {
       car.bookedTimeSlots = car.bookedTimeSlots.filter(
-        slot => slot.from !== booking.bookedTimeSlots.from || slot.to !== booking.bookedTimeSlots.to
+        slot => {
+          const slotFrom = new Date(slot.from).getTime();
+          const slotTo = new Date(slot.to).getTime();
+          const bookingFrom = new Date(booking.bookedTimeSlots.from).getTime();
+          const bookingTo = new Date(booking.bookedTimeSlots.to).getTime();
+          return slotFrom !== bookingFrom || slotTo !== bookingTo;
+        }
       );
       await car.save();
     }
@@ -165,7 +224,7 @@ export const cancelBooking = async (req, res) => {
       booking
     });
   } catch (error) {
-    console.error(error);
+    console.error('Cancel Booking Error:', error);
     res.status(500).json({ message: error.message });
   }
 };
@@ -184,15 +243,12 @@ export const generateInvoice = async (req, res) => {
       return res.status(404).json({ message: 'Booking not found' });
     }
 
-    // Check if user owns this booking or is admin
     if (booking.user._id.toString() !== userId.toString() && req.user.role !== 'admin') {
       return res.status(403).json({ message: 'Not authorized to access this invoice' });
     }
 
-    // Create PDF
     const doc = new PDFDocument({ margin: 50 });
     
-    // Set response headers
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename=invoice-${booking._id}.pdf`);
     
@@ -251,7 +307,7 @@ export const generateInvoice = async (req, res) => {
     doc.end();
 
   } catch (error) {
-    console.error(error);
+    console.error('Invoice Generation Error:', error);
     res.status(500).json({ message: error.message });
   }
 };
@@ -262,7 +318,7 @@ export const updateBookingStatus = async (req, res) => {
     const { id } = req.params;
     const { status } = req.body;
 
-    const validStatuses = ['pending', 'confirmed', 'cancelled'];
+    const validStatuses = ['pending', 'confirmed', 'cancelled', 'completed'];
     if (!validStatuses.includes(status)) {
       return res.status(400).json({ message: 'Invalid status' });
     }
@@ -271,7 +327,7 @@ export const updateBookingStatus = async (req, res) => {
       id,
       { status },
       { new: true }
-    ).populate('car').populate('user');
+    ).populate('car').populate('user', 'name email phone');
 
     if (!booking) {
       return res.status(404).json({ message: 'Booking not found' });
@@ -283,7 +339,111 @@ export const updateBookingStatus = async (req, res) => {
       booking
     });
   } catch (error) {
-    console.error(error);
+    console.error('Update Booking Status Error:', error);
     res.status(500).json({ message: error.message });
   }
+};
+
+// 🆕 Add Rating to Completed Booking
+export const addRating = async (req, res) => {
+  try {
+    const { bookingId, rating, review } = req.body;
+    const userId = req.user._id;
+
+    const booking = await Booking.findById(bookingId);
+    
+    if (!booking) {
+      return res.status(404).json({ message: 'Booking not found' });
+    }
+
+    if (booking.user.toString() !== userId.toString()) {
+      return res.status(403).json({ message: 'Not authorized' });
+    }
+
+    if (booking.status !== 'completed') {
+      return res.status(400).json({ 
+        message: 'Can only rate completed bookings' 
+      });
+    }
+
+    // Check if already rated
+    const existingRating = await Rating.findOne({ booking: bookingId });
+    if (existingRating) {
+      return res.status(400).json({ message: 'Booking already rated' });
+    }
+
+    const newRating = await Rating.create({
+      booking: bookingId,
+      car: booking.car,
+      user: userId,
+      rating,
+      review
+    });
+
+    // Update car average rating
+    await updateCarRating(booking.car);
+
+    res.status(201).json({
+      success: true,
+      message: 'Rating added successfully',
+      rating: newRating
+    });
+  } catch (error) {
+    console.error('Add Rating Error:', error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// 🆕 Get Car Ratings
+export const getCarRatings = async (req, res) => {
+  try {
+    const { carId } = req.params;
+    
+    const ratings = await Rating.find({ car: carId, isApproved: true })
+      .populate('user', 'name')
+      .sort({ createdAt: -1 });
+
+    const avgRating = ratings.length > 0
+      ? ratings.reduce((sum, r) => sum + r.rating, 0) / ratings.length
+      : 0;
+
+    res.status(200).json({
+      success: true,
+      averageRating: avgRating.toFixed(1),
+      totalRatings: ratings.length,
+      ratings
+    });
+  } catch (error) {
+    console.error('Get Ratings Error:', error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Helper function to update car average rating
+const updateCarRating = async (carId) => {
+  try {
+    const ratings = await Rating.find({ car: carId, isApproved: true });
+    
+    if (ratings.length > 0) {
+      const avgRating = ratings.reduce((sum, r) => sum + r.rating, 0) / ratings.length;
+      await Car.findByIdAndUpdate(carId, {
+        averageRating: avgRating,
+        totalRatings: ratings.length
+      });
+    }
+  } catch (error) {
+    console.error('Update Car Rating Error:', error);
+  }
+};
+
+export default {
+  createPaymentIntent,
+  createBooking,
+  getUserBookings,
+  getAllBookings,
+  cancelBooking,
+  generateInvoice,
+  updateBookingStatus,
+  addRating,
+  getCarRatings
 };
