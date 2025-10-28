@@ -1,3 +1,4 @@
+// backend/routes/couponRoutes.js - FIXED VERSION
 import express from 'express';
 import { protect, authorize } from '../middleware/authMiddleware.js';
 import {
@@ -14,29 +15,29 @@ import {
 
 const router = express.Router();
 
-// Public or authenticated routes
-router.post('/validate', protect, validateCoupon);  // Validate coupon for a user
-router.get('/active', getActiveCoupons);            // Get active coupons (public)
+// ========================================
+// PUBLIC ROUTES (no authentication required)
+// ========================================
+router.get('/active', getActiveCoupons);  // ✅ Get active coupons
 
-// Admin-only statistics
-router.get('/stats', getCouponStats);
+// ========================================
+// AUTHENTICATED USER ROUTES
+// ========================================
+router.post('/validate', protect, validateCoupon);  // Validate coupon
+router.post('/apply', protect, applyCoupon);        // Apply coupon to booking
 
-// Apply coupon (authenticated users)
-router.post('/apply', protect, applyCoupon);
-
-
-// Admin-only routes
-router.use(protect, authorize('admin'));  // All routes below are admin-protected
+// ========================================
+// ADMIN ROUTES (admin authentication required)
+// ========================================
+router.get('/stats', protect, authorize('admin'), getCouponStats);
 
 router.route('/')
-  .get(getAllCoupons)  // Get all coupons
-  .post(createCoupon); // Create new coupon
+  .get(protect, authorize('admin'), getAllCoupons)     // Get all coupons
+  .post(protect, authorize('admin'), createCoupon);    // Create new coupon
 
 router.route('/:id')
-  .get(getCouponById)  // Get coupon by ID
-  .put(updateCoupon)   // Update coupon
-  .delete(deleteCoupon); // Delete coupon
-
-
+  .get(protect, authorize('admin'), getCouponById)     // Get coupon by ID
+  .put(protect, authorize('admin'), updateCoupon)      // Update coupon
+  .delete(protect, authorize('admin'), deleteCoupon);  // Delete coupon
 
 export default router;

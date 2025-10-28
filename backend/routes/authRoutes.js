@@ -1,23 +1,23 @@
-// backend/routes/authRoutes.js
+// backend/routes/authRoutes.js - COMPLETE FIXED VERSION
 import express from 'express';
 import { 
-  registerUser, 
-  loginUser, 
+  register, 
+  login, 
   getProfile,
   updateProfile,
-  changePassword,
-  logoutUser
+  changePassword
 } from '../controllers/authController.js';
 import { protect } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
-// Public routes
-router.post('/register', registerUser);
-router.post('/login', loginUser);
-router.post('/logout', logoutUser);
+// ✅ PUBLIC ROUTES
+router.post('/register', register);
+router.post('/login', login);
+//router.post('/logout', logoutUser);
 
-// Protected routes
+
+// ✅ PROTECTED ROUTES (require authentication)
 router.get('/profile', protect, getProfile);
 router.put('/profile', protect, updateProfile);
 router.put('/change-password', protect, changePassword);
