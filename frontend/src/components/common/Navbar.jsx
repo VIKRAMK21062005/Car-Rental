@@ -1,4 +1,4 @@
-// frontend/src/components/common/Navbar.jsx - PERFECT VERSION
+// frontend/src/components/common/Navbar.jsx - FIXED VERSION
 import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
@@ -22,12 +22,17 @@ const Navbar = () => {
 
   const handleLogout = async () => {
     try {
+      console.log('🚪 Logging out...');
       await logout();
       setShowDropdown(false);
-      navigate('/');
-      window.location.reload();
+      setIsOpen(false);
+      
+      // Navigate to home WITHOUT reload
+      navigate('/', { replace: true });
+      
+      console.log('✅ Logout complete');
     } catch (error) {
-      console.error('Logout error:', error);
+      console.error('❌ Logout error:', error);
     }
   };
 
@@ -114,12 +119,10 @@ const Navbar = () => {
           <div className="hidden md:flex items-center space-x-4">
             {user ? (
               <div className="relative" ref={dropdownRef}>
-                {/* Profile Button */}
                 <button
                   onClick={() => setShowDropdown(!showDropdown)}
                   className="flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-all group"
                 >
-                  {/* Avatar */}
                   <div className="relative">
                     <div className="w-10 h-10 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full flex items-center justify-center text-white font-bold text-lg shadow-lg transform group-hover:scale-110 transition-transform duration-300">
                       {user.name?.charAt(0).toUpperCase()}
@@ -127,7 +130,6 @@ const Navbar = () => {
                     <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white dark:border-gray-800 rounded-full"></span>
                   </div>
 
-                  {/* User Name */}
                   <div className="text-left hidden lg:block">
                     <p className="text-sm font-semibold text-gray-700 dark:text-gray-300">
                       {user.name}
@@ -137,7 +139,6 @@ const Navbar = () => {
                     </p>
                   </div>
 
-                  {/* Dropdown Arrow */}
                   <svg 
                     className={`w-4 h-4 text-gray-500 transition-transform duration-300 ${showDropdown ? 'rotate-180' : ''}`}
                     fill="none" 
@@ -148,10 +149,8 @@ const Navbar = () => {
                   </svg>
                 </button>
 
-                {/* Dropdown Menu */}
                 {showDropdown && (
                   <div className="absolute right-0 mt-2 w-64 bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 py-2 animate-fade-in-down">
-                    {/* User Info Header */}
                     <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
                       <p className="text-sm font-semibold text-gray-900 dark:text-white">
                         {user.name}
@@ -164,7 +163,6 @@ const Navbar = () => {
                       </span>
                     </div>
 
-                    {/* Menu Items */}
                     <div className="py-2">
                       <Link
                         to="/profile"
@@ -310,10 +308,7 @@ const Navbar = () => {
                 )}
 
                 <button
-                  onClick={() => {
-                    setIsOpen(false);
-                    handleLogout();
-                  }}
+                  onClick={handleLogout}
                   className="block w-full text-left px-3 py-2 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900 dark:hover:bg-opacity-20 rounded-md font-semibold transition-colors"
                 >
                   🚪 Logout

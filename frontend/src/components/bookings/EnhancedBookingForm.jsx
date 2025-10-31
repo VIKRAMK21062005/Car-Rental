@@ -1,4 +1,4 @@
-// frontend/src/components/bookings/EnhancedBookingForm.jsx - FIXED VERSION
+// frontend/src/components/bookings/EnhancedBookingForm.jsx - FIXED DATE VALIDATION
 import { useState } from 'react';
 import { CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
 
@@ -33,6 +33,19 @@ const EnhancedBookingForm = ({ car, onSuccess, onCancel }) => {
     totalAmount: 0
   });
 
+  // ✅ FIXED: Get current date/time in local timezone for min attribute
+  const getLocalDateTimeMin = () => {
+    const now = new Date();
+    // Subtract 1 hour to allow bookings starting "now"
+    now.setHours(now.getHours() - 1);
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const hours = String(now.getHours()).padStart(2, '0');
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
+  };
+
   // Calculate hours and amount
   const calculateBooking = () => {
     if (!bookingData.startDate || !bookingData.endDate) {
@@ -42,6 +55,10 @@ const EnhancedBookingForm = ({ car, onSuccess, onCancel }) => {
 
     const start = new Date(bookingData.startDate);
     const end = new Date(bookingData.endDate);
+    const now = new Date();
+    
+    // ✅ FIXED: Allow bookings starting from 1 hour ago (for timezone issues)
+    const minStartTime = new Date(now.getTime() - 60 * 60 * 1000);
     
     // Validate dates
     if (end <= start) {
@@ -49,9 +66,8 @@ const EnhancedBookingForm = ({ car, onSuccess, onCancel }) => {
       return;
     }
 
-    const now = new Date();
-    if (start < now) {
-      setError('Start date cannot be in the past');
+    if (start < minStartTime) {
+      setError('Start date cannot be more than 1 hour in the past');
       return;
     }
 
@@ -74,7 +90,9 @@ const EnhancedBookingForm = ({ car, onSuccess, onCancel }) => {
       hours,
       days,
       pricePerDay: car.pricePerDay,
-      amount
+      amount,
+      now: now.toISOString(),
+      minStartTime: minStartTime.toISOString()
     });
 
     setBookingData(prev => ({
@@ -108,41 +126,39 @@ const EnhancedBookingForm = ({ car, onSuccess, onCancel }) => {
       console.log('💳 Step 1: Creating payment intent...');
       
       // Step 1: Create payment intent
-      // Step 1: Create payment intent
-const intentResponse = await fetch(`${API_URL}/bookings/create-payment-intent`, {
-  method: 'POST',
-  headers: {
-    'Content-Type': 'application/json',
-    'Authorization': `Bearer ${token}`
-  },
-  body: JSON.stringify({
-    amount: bookingData.totalAmount,
-    carId: car._id,
-    startDate: bookingData.startDate,
-    endDate: bookingData.endDate
-  })
-});
+      const intentResponse = await fetch(`${API_URL}/bookings/create-payment-intent`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          amount: bookingData.totalAmount,
+          carId: car._id,
+          startDate: bookingData.startDate,
+          endDate: bookingData.endDate
+        })
+      });
 
-// Debug the raw backend response
-const rawText = await intentResponse.text();
-console.log("🔍 Raw response from backend:", rawText);
+      const rawText = await intentResponse.text();
+      console.log("🔍 Raw response from backend:", rawText);
 
-let intentData;
-try {
-  intentData = JSON.parse(rawText);
-} catch {
-  throw new Error("Invalid JSON received from backend: " + rawText);
-}
+      let intentData;
+      try {
+        intentData = JSON.parse(rawText);
+      } catch {
+        throw new Error("Invalid JSON received from backend: " + rawText);
+      }
 
-if (!intentResponse.ok) {
-  throw new Error(intentData.message || 'Failed to create payment intent');
-}
+      if (!intentResponse.ok) {
+        throw new Error(intentData.message || 'Failed to create payment intent');
+      }
 
-const { clientSecret, paymentIntentId } = intentData;
+      const { clientSecret, paymentIntentId } = intentData;
 
-if (!clientSecret) {
-  throw new Error('No payment client secret received');
-}
+      if (!clientSecret) {
+        throw new Error('No payment client secret received');
+      }
 
       console.log('✅ Payment intent created:', paymentIntentId);
 
@@ -221,9 +237,8 @@ if (!clientSecret) {
       console.error('❌ Payment/Booking Error:', err);
       setError(err.message || 'An error occurred. Please try again.');
       
-      // If payment succeeded but booking failed, show specific message
       if (err.message.includes('booking') || err.message.includes('already booked')) {
-        setError('Payment successful but booking failed. Please contact support with your transaction ID. Our team will help you complete the booking.');
+        setError('Payment successful but booking failed. Please contact support with your transaction ID.');
       }
     } finally {
       setProcessing(false);
@@ -298,10 +313,13 @@ if (!clientSecret) {
               type="datetime-local"
               value={bookingData.startDate}
               onChange={(e) => setBookingData(prev => ({ ...prev, startDate: e.target.value }))}
-              min={new Date().toISOString().slice(0, 16)}
+              min={getLocalDateTimeMin()}
               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
               required
             />
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              ℹ️ You can book starting from the current time
+            </p>
           </div>
 
           <div>
@@ -312,7 +330,7 @@ if (!clientSecret) {
               type="datetime-local"
               value={bookingData.endDate}
               onChange={(e) => setBookingData(prev => ({ ...prev, endDate: e.target.value }))}
-              min={bookingData.startDate || new Date().toISOString().slice(0, 16)}
+              min={bookingData.startDate || getLocalDateTimeMin()}
               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
               required
             />
@@ -449,7 +467,6 @@ if (!clientSecret) {
           </div>
         </div>
       )}
-
     </div>
   );
 };
