@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { getAllBookings, updateBookingStatus } from '../../services/adminService';
 import Loader from '../common/Loader';
 
@@ -7,27 +7,27 @@ const ManageBookings = () => {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
 
-  useEffect(() => {
-    fetchBookings();
-  }, [filter]);
-
-  const fetchBookings = async () => {
+  const fetchBookings = useCallback(async () => {
     setLoading(true);
     try {
       const data = await getAllBookings(filter !== 'all' ? { status: filter } : {});
       setBookings(data);
-    } catch (err) {
+    } catch {
       console.error('Failed to load bookings');
     } finally {
       setLoading(false);
     }
-  };
+  }, [filter]);
+
+  useEffect(() => {
+    fetchBookings();
+  }, [fetchBookings]);
 
   const handleStatusUpdate = async (id, status) => {
     try {
       await updateBookingStatus(id, status);
       fetchBookings();
-    } catch (err) {
+    } catch {
       alert('Failed to update booking');
     }
   };

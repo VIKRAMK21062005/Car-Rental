@@ -18,7 +18,7 @@ const ManageCars = () => {
     try {
       const data = await getCars();
       setCars(data);
-    } catch (err) {
+    } catch {
       console.error('Failed to load cars');
     } finally {
       setLoading(false);
@@ -30,7 +30,7 @@ const ManageCars = () => {
     try {
       await deleteCar(id);
       fetchCars();
-    } catch (err) {
+    } catch {
       alert('Failed to delete car');
     }
   };

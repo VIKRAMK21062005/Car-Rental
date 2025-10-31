@@ -19,7 +19,7 @@ const CouponInput = ({ onApply }) => {
       } else {
         setMessage('Invalid coupon code');
       }
-    } catch (err) {
+    } catch {
       setMessage('Failed to validate coupon');
     } finally {
       setLoading(false);

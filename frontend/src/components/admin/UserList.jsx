@@ -15,7 +15,7 @@ const UserList = () => {
     try {
       const data = await getAllUsers();
       setUsers(data);
-    } catch (err) {
+    } catch {
       console.error('Failed to load users');
     } finally {
       setLoading(false);
@@ -27,7 +27,7 @@ const UserList = () => {
     try {
       await deleteUser(id);
       fetchUsers();
-    } catch (err) {
+    } catch {
       alert('Failed to delete user');
     }
   };

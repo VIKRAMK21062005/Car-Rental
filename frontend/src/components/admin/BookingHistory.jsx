@@ -165,7 +165,7 @@ const BookingHistory = () => {
                         try {
                           await api.delete(`/bookings/${booking._id}`);
                           setBookings(prev => prev.filter(b => b._id !== booking._id));
-                        } catch (err) {
+                        } catch {
                           alert('Failed to delete booking');
                         }
                       }}

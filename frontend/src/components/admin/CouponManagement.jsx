@@ -32,7 +32,7 @@ const CouponManagement = () => {
     try {
       const response = await api.get('/coupons');
       setCoupons(response.data.data || []);
-    } catch (err) {
+    } catch {
       console.error('Failed to load coupons');
     } finally {
       setLoading(false);
@@ -81,7 +81,7 @@ const CouponManagement = () => {
       await api.delete(`/coupons/${id}`);
       alert('Coupon deleted successfully!');
       fetchCoupons();
-    } catch (err) {
+    } catch {
       alert('Failed to delete coupon');
     }
   };

@@ -15,7 +15,7 @@ const NotificationsList = () => {
     try {
       const data = await getNotifications();
       setNotifications(data);
-    } catch (err) {
+    } catch {
       console.error('Failed to load notifications');
     } finally {
       setLoading(false);
@@ -26,7 +26,7 @@ const NotificationsList = () => {
     try {
       await markAsRead(id);
       fetchNotifications();
-    } catch (err) {
+    } catch {
       console.error('Failed to mark as read');
     }
   };

@@ -1,5 +1,5 @@
 // frontend/src/pages/CarDetailsPage.jsx - ENHANCED VERSION
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getCarById } from '../services/carService';
 import Loader from '../components/common/Loader';
@@ -10,7 +10,7 @@ import { loadStripe } from '@stripe/stripe-js';
 import { Elements } from '@stripe/react-stripe-js';
 import EnhancedBookingForm from '../components/bookings/EnhancedBookingForm';
 
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY || 'pk_test_51QYzRkSFCbP0WVsZQfn9fgOL9RJnLnxzxJ4TXPL0KhBhMIKmkEqJVo5SL5mNKSm5eCxKE0qJIYIyXM6lrAQO2Aub00NtOVbRnK');
+const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY || 'pk_test_51SFC0nKSQkMVQgKFQizuGgSe6Na8iquvWJUp4Qk3Zqk9mIXgoQrKhhJ9plsYt88RQ149auefoy6bVd7cOOqglSEz00Y5YYMpfh');
 
 const CarDetailsPage = () => {
   const { id } = useParams();
@@ -22,12 +22,7 @@ const CarDetailsPage = () => {
   const [loading, setLoading] = useState(true);
   const [showBookingForm, setShowBookingForm] = useState(false);
 
-  useEffect(() => {
-    fetchCar();
-    fetchRatings();
-  }, [id]);
-
-  const fetchCar = async () => {
+  const fetchCar = useCallback(async () => {
     setLoading(true);
     try {
       const data = await getCarById(id);
@@ -38,9 +33,9 @@ const CarDetailsPage = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [id, navigate]);
 
-  const fetchRatings = async () => {
+  const fetchRatings = useCallback(async () => {
     try {
       const response = await api.get(`/bookings/ratings/${id}`);
       if (response.data.success) {
@@ -51,7 +46,12 @@ const CarDetailsPage = () => {
     } catch (error) {
       console.error('Failed to fetch ratings:', error);
     }
-  };
+  }, [id]);
+
+  useEffect(() => {
+    fetchCar();
+    fetchRatings();
+  }, [fetchCar, fetchRatings]);
 
   const handleBookingSuccess = () => {
     setShowBookingForm(false);

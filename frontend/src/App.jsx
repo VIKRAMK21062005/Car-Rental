@@ -1,10 +1,12 @@
+// frontend/src/App.jsx - PERFECT VERSION
 import { BrowserRouter } from 'react-router-dom';
-import { AuthProvider } from './context/AuthContext';
-import { ThemeProvider } from './context/ThemeContext';
-import { ChatProvider } from './context/ChatContext';
+import AuthProvider from './context/AuthProvider.jsx';
+import ThemeProvider from './context/ThemeProvider.jsx';
+import ChatProvider from './context/ChatProvider.jsx';
 import AppRouter from './router';
 import ChatbotWidget from './components/common/ChatbotWidget';
-//import DebugAuthStatus from './components/common/DebugAuthStatus';
+
+
 
 function App() {
   return (
@@ -12,10 +14,10 @@ function App() {
       <ThemeProvider>
         <AuthProvider>
           <ChatProvider>
-            <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+            <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 dark:from-gray-900 dark:to-gray-800 transition-colors duration-300">
               <AppRouter />
               <ChatbotWidget />
-              {/* <DebugAuthStatus /> */}
+              
             </div>
           </ChatProvider>
         </AuthProvider>

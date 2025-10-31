@@ -1,5 +1,5 @@
 // frontend/src/components/common/ChatbotWidget.jsx
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import api from '../../services/api';
 
 const ChatbotWidget = () => {
@@ -22,6 +22,10 @@ const ChatbotWidget = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  const addMessage = useCallback((message) => {
+    setMessages(prev => [...prev, { ...message, id: Date.now() + Math.random() }]);
+  }, []);
+
   // Welcome message on first open
   useEffect(() => {
     if (isOpen && messages.length === 0) {
@@ -31,11 +35,7 @@ const ChatbotWidget = () => {
         timestamp: new Date()
       });
     }
-  }, [isOpen]);
-
-  const addMessage = (message) => {
-    setMessages(prev => [...prev, { ...message, id: Date.now() + Math.random() }]);
-  };
+  }, [isOpen, messages.length, addMessage]);
 
   const handleSend = async (messageText = input) => {
     if (!messageText.trim()) return;

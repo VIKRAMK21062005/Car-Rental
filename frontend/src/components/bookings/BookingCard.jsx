@@ -26,7 +26,7 @@ const BookingCard = ({ booking, onUpdate }) => {
     try {
       await downloadInvoice(booking._id);
       alert('Invoice downloaded successfully!');
-    } catch (err) {
+    } catch {
       alert('Failed to download invoice');
     } finally {
       setLoading(false);

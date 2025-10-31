@@ -39,7 +39,7 @@ const RatingModal = ({ booking, onClose, onSubmit }) => {
       } else {
         alert(data.message);
       }
-    } catch (error) {
+    } catch {
       alert('Failed to submit rating');
     } finally {
       setLoading(false);

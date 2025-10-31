@@ -1,8 +1,7 @@
-import { createContext, useState } from 'react';
+import { useState } from 'react';
+import { ChatContext } from './ChatContext';
 
-export const ChatContext = createContext();
-
-export const ChatProvider = ({ children }) => {
+export default function ChatProvider({ children }) {
   const [messages, setMessages] = useState([]);
   const [isOpen, setIsOpen] = useState(false);
 

@@ -12,7 +12,7 @@ const BookingsPage = () => {
     try {
       const data = await getMyBookings();
       setBookings(data);
-    } catch (err) {
+    } catch {
       console.error('Failed to load bookings');
     } finally {
       setLoading(false);

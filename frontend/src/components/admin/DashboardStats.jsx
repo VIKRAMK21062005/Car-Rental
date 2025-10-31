@@ -14,7 +14,7 @@ const DashboardStats = () => {
     try {
       const data = await getDashboardStats();
       setStats(data);
-    } catch (error) {
+    } catch {
       console.error('Failed to load stats');
     } finally {
       setLoading(false);
