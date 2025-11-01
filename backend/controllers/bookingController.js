@@ -4,9 +4,6 @@ import Car from '../models/Car.js';
 import Rating from '../models/Rating.js';
 import stripe from '../config/stripe.js';
 import PDFDocument from 'pdfkit';
-import { fileURLToPath } from 'url';
-
-const __filename = fileURLToPath(import.meta.url);
 
 // 🧾 Create Stripe Payment Intent
 export const createPaymentIntent = async (req, res) => {
@@ -26,7 +23,7 @@ export const createPaymentIntent = async (req, res) => {
     // Check for overlapping bookings
     const overlapping = await Booking.findOne({
       car: carId,
-      status: { $in: ['pending', 'confirmed'] },
+      status: { $in: ['pending', 'confirmed', 'ongoing'] },
       $or: [
         { 'bookedTimeSlots.from': { $lt: endDate, $gte: startDate } },
         { 'bookedTimeSlots.to': { $lte: endDate, $gt: startDate } },
@@ -71,7 +68,17 @@ export const createPaymentIntent = async (req, res) => {
 // 🚗 Create New Booking (After Payment Success)
 export const createBooking = async (req, res) => {
   try {
-    const { car, bookedTimeSlots, totalHours, totalAmount, transactionId } = req.body;
+    const { 
+      car, 
+      bookedTimeSlots, 
+      totalHours, 
+      totalAmount,
+      originalAmount,
+      discountAmount,
+      couponCode,
+      transactionId 
+    } = req.body;
+    
     const user = req.user._id;
 
     // Validate required fields
@@ -90,7 +97,7 @@ export const createBooking = async (req, res) => {
     // Final check for overlapping bookings
     const overlappingBooking = await Booking.findOne({
       car,
-      status: { $in: ['pending', 'confirmed'] },
+      status: { $in: ['pending', 'confirmed', 'ongoing'] },
       $or: [
         { 'bookedTimeSlots.from': { $lt: bookedTimeSlots.to, $gte: bookedTimeSlots.from } },
         { 'bookedTimeSlots.to': { $lte: bookedTimeSlots.to, $gt: bookedTimeSlots.from } },
@@ -107,15 +114,25 @@ export const createBooking = async (req, res) => {
       });
     }
 
+    // ✅ FIX: Create booking with proper amounts
     const newBooking = new Booking({
       car,
       user,
       bookedTimeSlots,
       totalHours,
-      totalAmount,
+      originalAmount: originalAmount || totalAmount,
+      discountAmount: discountAmount || 0,
+      totalAmount: totalAmount,
+      couponCode: couponCode || null,
       transactionId: transactionId || 'PENDING',
       status: transactionId ? 'confirmed' : 'pending',
       paymentStatus: transactionId ? 'paid' : 'unpaid',
+      statusHistory: [{
+        status: transactionId ? 'confirmed' : 'pending',
+        changedBy: user,
+        changedAt: new Date(),
+        reason: 'Booking created'
+      }]
     });
 
     await newBooking.save();
@@ -168,6 +185,8 @@ export const getAllBookings = async (req, res) => {
     const bookings = await Booking.find()
       .populate('car')
       .populate('user', 'name email phone')
+      .populate('cancelledBy', 'name email')
+      .populate('statusHistory.changedBy', 'name email')
       .sort({ createdAt: -1 });
 
     res.status(200).json(bookings);
@@ -185,6 +204,7 @@ export const cancelBooking = async (req, res) => {
   try {
     const { id } = req.params;
     const userId = req.user._id;
+    const { reason } = req.body;
 
     const booking = await Booking.findById(id);
 
@@ -200,8 +220,8 @@ export const cancelBooking = async (req, res) => {
       return res.status(400).json({ message: 'Booking already cancelled' });
     }
 
-    booking.status = 'cancelled';
-    await booking.save();
+    // Use the cancel method
+    await booking.cancel(userId, reason);
 
     // Remove from car's booked slots
     const car = await Car.findById(booking.car);
@@ -286,17 +306,23 @@ export const generateInvoice = async (req, res) => {
       .text(`Status: ${booking.status.toUpperCase()}`)
       .moveDown(2);
 
-    // Payment Summary
+    // ✅ FIX: Payment Summary with Discount
     doc.fontSize(14).text('Payment Summary:', { underline: true });
     doc.fontSize(10)
-      .text(`Amount: ₹${booking.totalAmount}`)
+      .text(`Original Amount: ₹${booking.originalAmount}`)
+    
+    if (booking.discountAmount > 0) {
+      doc.text(`Discount (${booking.couponCode}): -₹${booking.discountAmount}`)
+    }
+    
+    doc.text(`Final Amount: ₹${booking.totalAmount}`)
       .text(`Payment Status: ${booking.paymentStatus.toUpperCase()}`)
       .text(`Transaction ID: ${booking.transactionId || 'N/A'}`)
       .moveDown(2);
 
     // Total
     doc.fontSize(16)
-      .text(`TOTAL AMOUNT: ₹${booking.totalAmount}`, { bold: true })
+      .text(`TOTAL AMOUNT PAID: ₹${booking.totalAmount}`, { bold: true })
       .moveDown(3);
 
     // Footer
@@ -312,26 +338,30 @@ export const generateInvoice = async (req, res) => {
   }
 };
 
-// 🆕 Update Booking Status (Admin)
+// ✅ FIX: Update Booking Status (Admin) - NOW PROPERLY HANDLES STATUS CHANGES
 export const updateBookingStatus = async (req, res) => {
   try {
     const { id } = req.params;
-    const { status } = req.body;
+    const { status, reason } = req.body;
 
-    const validStatuses = ['pending', 'confirmed', 'cancelled', 'completed'];
+    const validStatuses = ['pending', 'confirmed', 'ongoing', 'completed', 'cancelled'];
     if (!validStatuses.includes(status)) {
       return res.status(400).json({ message: 'Invalid status' });
     }
 
-    const booking = await Booking.findByIdAndUpdate(
-      id,
-      { status },
-      { new: true }
-    ).populate('car').populate('user', 'name email phone');
+    const booking = await Booking.findById(id);
 
     if (!booking) {
       return res.status(404).json({ message: 'Booking not found' });
     }
+
+    // ✅ FIX: Use the updateStatus method to track history
+    await booking.updateStatus(status, req.user._id, reason);
+    
+    // Populate for response
+    await booking.populate('car');
+    await booking.populate('user', 'name email phone');
+    await booking.populate('statusHistory.changedBy', 'name email');
 
     res.status(200).json({
       success: true,
@@ -379,6 +409,10 @@ export const addRating = async (req, res) => {
       rating,
       review
     });
+
+    // ✅ FIX: Update booking hasRated flag
+    booking.hasRated = true;
+    await booking.save();
 
     // Update car average rating
     await updateCarRating(booking.car);

@@ -24,6 +24,7 @@ import bookingRoutes from './routes/bookingRoutes.js';
 import chatbotRoutes from './routes/chatbotRoutes.js';
 import couponRoutes from './routes/couponRoutes.js';
 import notificationRoutes from './routes/notificationRoutes.js';
+import ratingRoutes from './routes/ratingRoutes.js';
 
 // Models
 import Car from './models/Car.js';
@@ -120,6 +121,8 @@ app.use('/api/bookings', bookingRoutes);
 app.use('/api/chatbot', chatbotRoutes);
 app.use('/api/coupons', couponRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/ratings', ratingRoutes);
+
 
 // Health check endpoint
 app.get('/health', (req, res) => {
