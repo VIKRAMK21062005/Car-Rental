@@ -45,7 +45,7 @@ const CarsPage = () => {
   if (loading) return <Loader />;
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8">
+    <div className="max-w-7xl mx-auto px-4 py-8 ">
       <h1 className="text-3xl font-bold mb-6 dark:text-white">Browse Our Cars</h1>
       <SearchBar onSearch={handleSearch} />
       <CarFilter onFilter={fetchCars} />

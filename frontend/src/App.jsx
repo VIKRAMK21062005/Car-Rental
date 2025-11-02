@@ -1,4 +1,4 @@
-// frontend/src/App.jsx - PERFECT VERSION
+// frontend/src/App.jsx
 import { BrowserRouter } from 'react-router-dom';
 import AuthProvider from './context/AuthProvider.jsx';
 import ThemeProvider from './context/ThemeProvider.jsx';

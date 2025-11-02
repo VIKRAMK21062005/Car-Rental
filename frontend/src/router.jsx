@@ -1,4 +1,4 @@
-// frontend/src/router.jsx - PERFECT VERSION
+// frontend/src/router.jsx
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './hooks/useAuth';
 import Navbar from './components/common/Navbar';

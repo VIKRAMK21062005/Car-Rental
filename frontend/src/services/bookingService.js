@@ -13,7 +13,7 @@ export const createPaymentIntent = async (amount) => {
 
 export const createBooking = async (bookingData) => {
   try {
-    // ✅ FIXED: Match backend expected format
+    
     const formattedData = {
       car: bookingData.carId,
       bookedTimeSlots: {
@@ -36,7 +36,6 @@ export const createBooking = async (bookingData) => {
 
 export const getMyBookings = async () => {
   try {
-    // ✅ FIXED: Get user ID from localStorage
     const user = JSON.parse(localStorage.getItem('user'));
     if (!user || !user._id) {
       throw new Error('User not authenticated');
@@ -88,10 +87,9 @@ export const downloadInvoice = async (bookingId) => {
   link.remove();
 };
 
-// Helper function to calculate hours
 const calculateHours = (startDate, endDate) => {
   const start = new Date(startDate);
   const end = new Date(endDate);
   const hours = Math.ceil((end - start) / (1000 * 60 * 60));
-  return hours > 0 ? hours : 24; // Minimum 24 hours
+  return hours > 0 ? hours : 24; 
 };

@@ -11,5 +11,3 @@ export const validatePhone = (phone) => {
 export const validatePassword = (password) => {
   return password.length >= 6;
 };
-
-//export default ChatbotWidget;

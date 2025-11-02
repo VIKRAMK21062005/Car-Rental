@@ -1,11 +1,10 @@
-// frontend/src/services/carService.js - FIXED VERSION
+// frontend/src/services/carService.js
 import api from './api';
 
 export const getCars = async (filters = {}) => {
   try {
     const params = new URLSearchParams();
     
-    // Add filters to params
     if (filters.type) params.append('type', filters.type);
     if (filters.minPrice) params.append('minPrice', filters.minPrice);
     if (filters.maxPrice) params.append('maxPrice', filters.maxPrice);
@@ -18,7 +17,6 @@ export const getCars = async (filters = {}) => {
     console.log('🔍 Fetching cars from:', url);
     const response = await api.get(url);
     
-    // ✅ FIXED: Handle both response formats
     if (response.data.success && response.data.data) {
       return response.data.data;
     }
@@ -33,7 +31,6 @@ export const getCarById = async (id) => {
   try {
     const response = await api.get(`/cars/${id}`);
     
-    // ✅ Handle both response formats
     if (response.data.success && response.data.data) {
       return response.data.data;
     }
@@ -90,7 +87,6 @@ export const searchCars = async (query) => {
   try {
     const response = await api.get(`/cars?search=${encodeURIComponent(query)}`);
     
-    // ✅ Handle both response formats
     if (response.data.success && response.data.data) {
       return response.data.data;
     }

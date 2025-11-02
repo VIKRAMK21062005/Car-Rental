@@ -52,12 +52,12 @@ const validateEnvVariables = () => {
   }
 
   // Check optional services
-  console.log('\n🔍 Service Configuration Status:');
-  console.log(`- MongoDB: ${process.env.MONGODB_URI ? '✅' : '❌'}`);
-  console.log(`- JWT: ${process.env.JWT_SECRET ? '✅' : '❌'}`);
-  console.log(`- Email: ${process.env.EMAIL_USER ? '✅' : '⚠️  Not configured'}`);
-  console.log(`- SMS: ${process.env.TWILIO_ACCOUNT_SID ? '✅' : '⚠️  Not configured'}`);
-  console.log(`- Stripe: ${process.env.STRIPE_SECRET_KEY ? '✅' : '⚠️  Not configured'}`);
+  // console.log('\n🔍 Service Configuration Status:');
+  // console.log(`- MongoDB: ${process.env.MONGODB_URI ? '✅' : '❌'}`);
+  // console.log(`- JWT: ${process.env.JWT_SECRET ? '✅' : '❌'}`);
+  // console.log(`- Email: ${process.env.EMAIL_USER ? '✅' : '⚠️  Not configured'}`);
+  // console.log(`- SMS: ${process.env.TWILIO_ACCOUNT_SID ? '✅' : '⚠️  Not configured'}`);
+  // console.log(`- Stripe: ${process.env.STRIPE_SECRET_KEY ? '✅' : '⚠️  Not configured'}`);
   
   // Validate AI configuration
   validateAIConfig();
@@ -110,7 +110,7 @@ app.use('/api/', limiter);
 
 // Optional: remove old car index (for backward compatibility)
 Car.collection.dropIndex('registrationNumber_1')
-  .then(() => console.log('✅ Old car index removed'))
+  .then(() => console.log(' Old car index removed'))
   .catch(() => {}); // Ignore error if index doesn't exist
 
 // API Routes
@@ -180,21 +180,18 @@ app.use(errorHandler);
 const PORT = process.env.PORT || 5000;
 const server = app.listen(PORT, async () => {
   console.log('');
-  console.log('═══════════════════════════════════════════════');
-  console.log(`🚀 Server running in ${process.env.NODE_ENV || 'development'} mode`);
-  console.log(`📡 Port: ${PORT}`);
-  console.log(`🌐 API: http://localhost:${PORT}`);
-  console.log('═══════════════════════════════════════════════');
-  console.log('');
+  console.log(`Server running in ${process.env.NODE_ENV || 'development'} mode`);
+  console.log(`Port: ${PORT}`);
+  console.log(`API: http://localhost:${PORT}`);
+  // console.log('');
 
-  // Verify services
-  console.log('🔍 Verifying services...');
-  await emailService.verifyConnection();
-  await smsService.verifyConnection();
-  console.log('');
+  // // Verify services
+  // console.log('🔍 Verifying services...');
+  // await emailService.verifyConnection();
+  // await smsService.verifyConnection();
+  // console.log('');
   
-  console.log('✅ Server is ready to accept requests');
-  console.log('═══════════════════════════════════════════════');
+  console.log('Server is ready to accept requests..');
   console.log('');
 });
 
@@ -203,13 +200,13 @@ const gracefulShutdown = (signal) => {
   console.log(`\n${signal} received. Starting graceful shutdown...`);
   
   server.close(() => {
-    console.log('✅ Server closed');
+    console.log(' Server closed');
     process.exit(0);
   });
 
   // Force shutdown after 10 seconds
   setTimeout(() => {
-    console.error('⚠️  Forcing shutdown after timeout');
+    console.error(' Forcing shutdown after timeout');
     process.exit(1);
   }, 10000);
 };
@@ -220,14 +217,14 @@ process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 
 // Handle unhandled promise rejections
 process.on('unhandledRejection', (err) => {
-  logger.error('❌ Unhandled Rejection:', err?.message || err);
+  logger.error(' Unhandled Rejection:', err?.message || err);
   console.error('Stack:', err?.stack);
   server.close(() => process.exit(1));
 });
 
 // Handle uncaught exceptions
 process.on('uncaughtException', (err) => {
-  logger.error('❌ Uncaught Exception:', err?.message || err);
+  logger.error(' Uncaught Exception:', err?.message || err);
   console.error('Stack:', err?.stack);
   process.exit(1);
 });

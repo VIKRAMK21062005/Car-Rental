@@ -1,4 +1,4 @@
-// frontend/src/components/common/Navbar.jsx - FIXED VERSION
+// frontend/src/components/common/Navbar.jsx - WITH HELP BUTTON
 import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
@@ -22,18 +22,22 @@ const Navbar = () => {
 
   const handleLogout = async () => {
     try {
-      console.log('🚪 Logging out...');
       await logout();
       setShowDropdown(false);
       setIsOpen(false);
-      
-      // Navigate to home WITHOUT reload
       navigate('/', { replace: true });
-      
-      console.log('✅ Logout complete');
     } catch (error) {
       console.error('❌ Logout error:', error);
     }
+  };
+
+  // ✅ NEW: Smooth scroll to footer
+  const scrollToFooter = () => {
+    const footer = document.getElementById('footer');
+    if (footer) {
+      footer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+    setIsOpen(false);
   };
 
   if (loading) {
@@ -63,7 +67,7 @@ const Navbar = () => {
           <div className="flex items-center">
             <Link to="/" className="flex items-center space-x-2 group">
               <div className="transform group-hover:scale-110 transition-transform duration-300">
-                <span className="text-3xl">🚗</span>
+                {/* <span className="text-3xl">🚗</span> */}
               </div>
               <span className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
                 CarRental
@@ -74,7 +78,7 @@ const Navbar = () => {
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center space-x-1">
             <Link 
-              to="/" 
+              to="/"
               className="relative px-4 py-2 rounded-lg text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-all group"
             >
               <span className="relative z-10">Home</span>
@@ -113,6 +117,20 @@ const Navbar = () => {
                 <span className="absolute inset-0 bg-purple-50 dark:bg-purple-900 rounded-lg scale-0 group-hover:scale-100 transition-transform duration-300"></span>
               </Link>
             )}
+
+            {/* ✅ NEW: Help Button */}
+            <button
+              onClick={scrollToFooter}
+              className="relative px-4 py-2 rounded-lg text-gray-700 dark:text-gray-300 hover:text-green-600 dark:hover:text-green-400 transition-all group"
+            >
+              <span className="relative z-10 flex items-center">
+                {/* <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg> */}
+                Help
+              </span>
+              <span className="absolute inset-0 bg-green-50 dark:bg-green-900 rounded-lg scale-0 group-hover:scale-100 transition-transform duration-300"></span>
+            </button>
           </div>
 
           {/* User Profile / Auth Buttons */}
@@ -315,6 +333,14 @@ const Navbar = () => {
                 </button>
               </>
             )}
+
+            {/* ✅ NEW: Mobile Help Button */}
+            <button
+              onClick={scrollToFooter}
+              className="block w-full text-left px-3 py-2 text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-gray-700 rounded-md font-semibold transition-colors"
+            >
+              ❓ Help & Contact
+            </button>
 
             {!user && (
               <Link 

@@ -45,7 +45,7 @@ const ImprovedHomePage = () => {
   };
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen" id="home">
       {/* Hero Section - Full Screen */}
       <section className="relative h-screen overflow-hidden">
         {/* Background Image Slider */}
