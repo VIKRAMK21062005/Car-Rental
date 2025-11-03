@@ -49,34 +49,6 @@ const AuthPage = () => {
           ))}
         </div>
 
-        {/* Floating Statistics */}
-        <div className="absolute top-10 right-10 animate-bounce">
-          <div className="bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm rounded-2xl p-4 shadow-xl">
-            <div className="flex items-center space-x-3">
-              <div className="w-12 h-12 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full flex items-center justify-center">
-                <span className="text-2xl">🚗</span>
-              </div>
-              <div>
-                <p className="font-bold text-gray-900 dark:text-white">500+</p>
-                <p className="text-xs text-gray-600 dark:text-gray-400">Cars Available</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="absolute bottom-10 left-10 animate-bounce animation-delay-1000">
-          <div className="bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm rounded-2xl p-4 shadow-xl">
-            <div className="flex items-center space-x-3">
-              <div className="w-12 h-12 bg-gradient-to-r from-green-600 to-teal-600 rounded-full flex items-center justify-center">
-                <span className="text-2xl">⭐</span>
-              </div>
-              <div>
-                <p className="font-bold text-gray-900 dark:text-white">4.9/5</p>
-                <p className="text-xs text-gray-600 dark:text-gray-400">Customer Rating</p>
-              </div>
-            </div>
-          </div>
-        </div>
 
         {/* Animated Text Overlay */}
         <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center pointer-events-none">
