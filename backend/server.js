@@ -1,4 +1,4 @@
-// server.js
+// server.js - CLEAN VERSION (NO WARNINGS)
 import path from 'path';
 import express from 'express';
 import dotenv from 'dotenv';
@@ -26,9 +26,6 @@ import couponRoutes from './routes/couponRoutes.js';
 import notificationRoutes from './routes/notificationRoutes.js';
 import ratingRoutes from './routes/ratingRoutes.js';
 
-// Models
-import Car from './models/Car.js';
-
 // Middleware
 import { notFound, errorHandler } from './middleware/errorMiddleware.js';
 import logger from './utils/logger.js';
@@ -47,18 +44,9 @@ const validateEnvVariables = () => {
   
   if (missing.length > 0) {
     console.error('❌ Missing required environment variables:', missing.join(', '));
-    console.error('Please check your .env file');
     process.exit(1);
   }
 
-  // Check optional services
-  // console.log('\n🔍 Service Configuration Status:');
-  // console.log(`- MongoDB: ${process.env.MONGODB_URI ? '✅' : '❌'}`);
-  // console.log(`- JWT: ${process.env.JWT_SECRET ? '✅' : '❌'}`);
-  // console.log(`- Email: ${process.env.EMAIL_USER ? '✅' : '⚠️  Not configured'}`);
-  // console.log(`- SMS: ${process.env.TWILIO_ACCOUNT_SID ? '✅' : '⚠️  Not configured'}`);
-  // console.log(`- Stripe: ${process.env.STRIPE_SECRET_KEY ? '✅' : '⚠️  Not configured'}`);
-  
   // Validate AI configuration
   validateAIConfig();
   console.log('');
@@ -74,12 +62,12 @@ const app = express();
 
 // Security Middlewares
 app.use(helmet({
-  contentSecurityPolicy: false, // Disable for development
+  contentSecurityPolicy: false,
   crossOriginEmbedderPolicy: false
 }));
 
 app.use(cors({
-  origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
+  origin: process.env.CORS_ORIGIN || '*',
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization']
@@ -93,7 +81,7 @@ app.use(cookieParser());
 // Sanitize data
 app.use(mongoSanitize());
 
-// Dev logging
+// Dev logging (only in development)
 if (process.env.NODE_ENV !== 'production') {
   app.use(morgan('dev', { stream: logger.stream }));
 }
@@ -108,11 +96,6 @@ const limiter = rateLimit({
 });
 app.use('/api/', limiter);
 
-// Optional: remove old car index (for backward compatibility)
-Car.collection.dropIndex('registrationNumber_1')
-  .then(() => console.log(' Old car index removed'))
-  .catch(() => {}); // Ignore error if index doesn't exist
-
 // API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
@@ -122,7 +105,6 @@ app.use('/api/chatbot', chatbotRoutes);
 app.use('/api/coupons', couponRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/ratings', ratingRoutes);
-
 
 // Health check endpoint
 app.get('/health', (req, res) => {
@@ -135,7 +117,7 @@ app.get('/health', (req, res) => {
       database: 'connected',
       email: process.env.EMAIL_USER ? 'configured' : 'not configured',
       sms: process.env.TWILIO_ACCOUNT_SID ? 'configured' : 'not configured',
-      ai: (process.env.OPENAI_API_KEY || process.env.GEMINI_API_KEY) ? 'configured' : 'not configured',
+      ai: process.env.KIMI_API_KEY ? 'configured' : 'not configured',
       payment: process.env.STRIPE_SECRET_KEY ? 'configured' : 'not configured'
     }
   });
@@ -155,9 +137,9 @@ app.get('/api', (req, res) => {
       chatbot: '/api/chatbot',
       coupons: '/api/coupons',
       notifications: '/api/notifications',
+      ratings: '/api/ratings',
       health: '/health'
-    },
-    documentation: 'https://your-docs-url.com'
+    }
   });
 });
 
@@ -179,20 +161,10 @@ app.use(errorHandler);
 // Start server
 const PORT = process.env.PORT || 5000;
 const server = app.listen(PORT, async () => {
-  console.log('');
-  console.log(`Server running in ${process.env.NODE_ENV || 'development'} mode`);
-  console.log(`Port: ${PORT}`);
-  console.log(`API: http://localhost:${PORT}`);
-  // console.log('');
-
-  // // Verify services
-  // console.log('🔍 Verifying services...');
-  // await emailService.verifyConnection();
-  // await smsService.verifyConnection();
-  // console.log('');
-  
-  console.log('Server is ready to accept requests..');
-  console.log('');
+  console.log(`\n🚀 Server running in ${process.env.NODE_ENV || 'development'} mode`);
+  console.log(`📍 Port: ${PORT}`);
+  console.log(`🌐 API: ${process.env.NODE_ENV === 'production' ? 'Production URL' : `http://localhost:${PORT}`}`);
+  console.log('✅ Server is ready to accept requests\n');
 });
 
 // Graceful shutdown
@@ -200,13 +172,12 @@ const gracefulShutdown = (signal) => {
   console.log(`\n${signal} received. Starting graceful shutdown...`);
   
   server.close(() => {
-    console.log(' Server closed');
+    console.log('✅ Server closed');
     process.exit(0);
   });
 
-  // Force shutdown after 10 seconds
   setTimeout(() => {
-    console.error(' Forcing shutdown after timeout');
+    console.error('❌ Forcing shutdown after timeout');
     process.exit(1);
   }, 10000);
 };
@@ -217,14 +188,19 @@ process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 
 // Handle unhandled promise rejections
 process.on('unhandledRejection', (err) => {
-  logger.error(' Unhandled Rejection:', err?.message || err);
-  console.error('Stack:', err?.stack);
-  server.close(() => process.exit(1));
+  logger.error('❌ Unhandled Rejection:', err?.message || err);
+  
+  if (process.env.NODE_ENV === 'production') {
+    console.error('⚠️ Unhandled rejection detected in production');
+  } else {
+    console.error('Stack:', err?.stack);
+    server.close(() => process.exit(1));
+  }
 });
 
 // Handle uncaught exceptions
 process.on('uncaughtException', (err) => {
-  logger.error(' Uncaught Exception:', err?.message || err);
+  logger.error('❌ Uncaught Exception:', err?.message || err);
   console.error('Stack:', err?.stack);
   process.exit(1);
 });
