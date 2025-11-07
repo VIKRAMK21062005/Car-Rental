@@ -30,7 +30,7 @@ const ImprovedHomePage = () => {
 
   const fetchActiveCoupons = async () => {
     try {
-      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+      const API_URL = import.meta.env.VITE_API_URL || 'https://car-rental-1-ljcp.onrender.com';
       const response = await fetch(`${API_URL}/coupons/active`);
       const data = await response.json();
       setCoupons(data.data || []);
